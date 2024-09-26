@@ -1,2 +1,2 @@
 # wuxiaworld-webscraper
- Webscraper for the novel site WuxiaWorld that scrapes the novel name and average rating
+ Webscraper for the novel site WuxiaWorld that scrapes novel names and average ratings
