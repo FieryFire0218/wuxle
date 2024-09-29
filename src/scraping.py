@@ -2,6 +2,10 @@ from bs4 import BeautifulSoup
 import requests
 from collections import deque
 import json
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 start_url = "https://www.wuxiaworld.com/novels"
 
@@ -32,7 +36,6 @@ def scraper(url):
     print("  Novel Titles:", novel_titles)
     print("  Review Ratings:", review_ratings)
     print("Format:")
-    print("  Data is in the format of a dictionary with keys 'novel_titles' and 'review_ratings'")
 
     return {"url": url, "novel_titles": novel_titles, "review_ratings": review_ratings}
         
@@ -45,14 +48,13 @@ def bfs(start_url, max_pages):
     scraped_novels = []
 
     while queue and pages_scraped < max_pages:
-        print(f"Queue: {queue}, Pages Scraped: {pages_scraped}")
+        print(f"Pages Scraped: {pages_scraped}")
         url = queue.popleft() #dequeue a URL
-        print(f"Visiting url: {url}")
         #novel_titles, review_ratings = scraper(url)
         try: 
             result = scraper(url)
             if result is not None and result not in scraped_novels:
-                visited.append(result)
+                scraped_novels.append(result)
             pages_scraped += 1
         except Exception as e:
             print(f"Error visiting url: {url} - {e}")
@@ -93,5 +95,5 @@ for i, novel in enumerate(scraped_novels):
 
 #print(doc.prettify().encode("utf-8"))
 
-#with open("prettified_ex.html", "w", encoding="utf-8") as file:
+#with open("prettified_main.html", "w", encoding="utf-8") as file:
 #    file.write(doc.prettify())
