@@ -3,6 +3,7 @@ import requests
 from collections import deque
 import json
 from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -10,13 +11,27 @@ from selenium.webdriver.support import expected_conditions as EC
 start_url = "https://www.wuxiaworld.com/novels"
 
 def scraper(url):
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-    except requests.exceptions.RequestException as e:
-        print(f"Error: {e}")
-        return None
-    soup = BeautifulSoup(response.content, "html.parser")
+    #initialize
+    options = Options()
+    options.add_argument("--headless")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--no-sandbox")
+    driver = webdriver.Chrome(options=options)
+    driver.get(url)
+
+    #wait for the content to load
+    WebDriverWait(driver, 5).until(
+        EC.presence_of_element_located((By.CSS_SELECTOR, ".chapter-content"))
+    )
+
+    #simulate scrolling
+    for i in range(10):
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        WebDriverWait(driver, 2).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, ".chapter-content"))
+        )
+    
+    soup = BeautifulSoup(driver.page_source, "html.parser")
     
     #data
     novel_titles = []
@@ -29,6 +44,8 @@ def scraper(url):
         rating_value = json_data.get('aggregateRating', {}).get('ratingValue')
         if rating_value is not None:
             review_ratings.append(rating_value)
+
+    driver.quit()
 
     #print
     print("URL:", url)
@@ -47,12 +64,22 @@ def bfs(start_url, max_pages):
     pages_scraped = 0
     scraped_novels = []
 
+    #initialize
+    options = Options()
+    options.add_argument("--headless")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--no-sandbox")
+    driver = webdriver.Chrome(options=options)
+
     while queue and pages_scraped < max_pages:
         print(f"Pages Scraped: {pages_scraped}")
         url = queue.popleft() #dequeue a URL
         #novel_titles, review_ratings = scraper(url)
         try: 
-            result = scraper(url)
+            driver.get(url)
+            html_content = driver.page_source
+            soup = BeautifulSoup(html_content, "html.parser")
+            result = scraper(url, soup)
             if result is not None and result not in scraped_novels:
                 scraped_novels.append(result)
             pages_scraped += 1
@@ -61,8 +88,6 @@ def bfs(start_url, max_pages):
         #visited.append({"url": url, "titles": novel_titles, "ratings": review_ratings})
 
         #links to other novels
-        response = requests.get(url)
-        soup = BeautifulSoup(response.content, "html.parser")
         links = soup.find_all("a", href=True)
         for link in links:
             href = link["href"]
@@ -72,6 +97,8 @@ def bfs(start_url, max_pages):
                 if novel_url not in visited:
                     queue.append(novel_url)
                     visited.append(novel_url)
+
+    driver.quit()
 
     return scraped_novels
 
