@@ -2,34 +2,36 @@ from bs4 import BeautifulSoup
 import requests
 from collections import deque
 import json
+import time
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
 start_url = "https://www.wuxiaworld.com/novels"
 
-def scraper(url):
-    #initialize
-    options = Options()
-    options.add_argument("--headless")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--no-sandbox")
-    driver = webdriver.Chrome(options=options)
-    driver.get(url)
-
+def scraper(driver, url):
     #wait for the content to load
-    WebDriverWait(driver, 5).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, ".chapter-content"))
-    )
+    try:
+        driver.get(url)
+        WebDriverWait(driver, 3).until(
+            lambda d: d.execute_script("return document.readyState") == "complete"
+        )
+    except TimeoutException:
+        print("Timed out waiting for page to load")
+        return None
 
     #simulate scrolling
-    for i in range(10):
+    last_height = driver.execute_script("return document.body.scrollHeight")
+    while True:
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        WebDriverWait(driver, 2).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, ".chapter-content"))
-        )
+        time.sleep(2)  # adjust the sleep time as needed
+        new_height = driver.execute_script("return document.body.scrollHeight")
+        if new_height == last_height:
+            break
+        last_height = new_height
     
     soup = BeautifulSoup(driver.page_source, "html.parser")
     
@@ -45,8 +47,6 @@ def scraper(url):
         if rating_value is not None:
             review_ratings.append(rating_value)
 
-    driver.quit()
-
     #print
     print("URL:", url)
     print("Data:")
@@ -59,7 +59,7 @@ def scraper(url):
 #    return novel_titles, review_ratings
 
 def bfs(start_url, max_pages):
-    visited = [] #keep track of visited URLs
+    visited = set() #keep track of visited URLs
     queue = deque([start_url]) #Queue to store URLs to be visited
     pages_scraped = 0
     scraped_novels = []
@@ -68,37 +68,42 @@ def bfs(start_url, max_pages):
     options = Options()
     options.add_argument("--headless")
     options.add_argument("--disable-gpu")
-    options.add_argument("--no-sandbox")
-    driver = webdriver.Chrome(options=options)
+    driver = webdriver.Firefox(options=options)
 
-    while queue and pages_scraped < max_pages:
-        print(f"Pages Scraped: {pages_scraped}")
-        url = queue.popleft() #dequeue a URL
-        #novel_titles, review_ratings = scraper(url)
-        try: 
-            driver.get(url)
-            html_content = driver.page_source
-            soup = BeautifulSoup(html_content, "html.parser")
-            result = scraper(url, soup)
-            if result is not None and result not in scraped_novels:
+    try:
+        while queue and pages_scraped < max_pages:
+            url = queue.popleft() #dequeue a URL
+            if url in visited:
+                continue
+            print(f"Visiting: {url}")
+
+            #simulate scrolling
+            last_height = driver.execute_script("return document.body.scrollHeight")
+            while True:
+                driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                time.sleep(2)  # adjust the sleep time as needed
+                new_height = driver.execute_script("return document.body.scrollHeight")
+                if new_height == last_height:
+                    break
+                last_height = new_height
+
+            result = scraper(driver, url)
+            if result:
                 scraped_novels.append(result)
-            pages_scraped += 1
-        except Exception as e:
-            print(f"Error visiting url: {url} - {e}")
-        #visited.append({"url": url, "titles": novel_titles, "ratings": review_ratings})
-
-        #links to other novels
-        links = soup.find_all("a", href=True)
-        for link in links:
-            href = link["href"]
-            if href.startswith("/novel/") and href != "/novel/" and len(href.split("/")) == 3:
-                novel_url = "https://www.wuxiaworld.com" + href  
-                print(f"Found new url: {novel_url}")
-                if novel_url not in visited:
-                    queue.append(novel_url)
-                    visited.append(novel_url)
-
-    driver.quit()
+                pages_scraped += 1
+                visited.add(url)
+            print(f"Pages scraped: {pages_scraped}")
+            soup = BeautifulSoup(driver.page_source, "html.parser")
+            for link in soup.find_all("a"):
+                href = link.get("href")
+                if href.startswith("/novel/") and href != "/novel/" and len(href.split("/")) == 3:
+                    novel_url = "https://www.wuxiaworld.com" + href
+                    if novel_url not in visited:
+                        queue.append(novel_url)
+            print(f"Pages scraped: {pages_scraped}")
+            
+    finally:
+        driver.quit()
 
     return scraped_novels
 
@@ -106,7 +111,7 @@ def bfs(start_url, max_pages):
 #print(visited)
 
 #test
-max_pages = 20
+max_pages = 40
 scraped_novels = bfs(start_url, max_pages)
 print("Scraped Novels:")
 for i, novel in enumerate(scraped_novels):
