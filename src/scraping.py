@@ -1,6 +1,7 @@
 from bs4 import BeautifulSoup
 import json
 import time
+import csv
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.common.by import By
@@ -28,18 +29,63 @@ def scraper(url):
             return None
 
         soup = BeautifulSoup(driver.page_source, "html.parser")
+
+        # titles
         novel_titles = []
-        review_ratings = []
         for h1 in soup.find_all("h1", class_="font-set-b24 text-gray-t1 line-clamp-2 sm2:font-set-b32"):
             novel_titles.append(h1.text.strip())
+
+        # review ratings
+        review_ratings = []
         script_tags = soup.select("script[type='application/ld+json'][data-rh='true']")
         for script_tag in script_tags:
             json_data = json.loads(script_tag.text)
             rating_value = json_data.get('aggregateRating', {}).get('ratingValue')
             if rating_value is not None:
                 review_ratings.append(rating_value)
-        print(f"Scraped: {url}")
-        return {"url": url, "novel_titles": novel_titles, "review_ratings": review_ratings}
+
+        # number of chapters
+        chapters_div = soup.find("div", class_="font-set-sb14 text-gray-750 break-word line-clamp-2 sm2:font-set-sb16 dark:text-gray-300 sm2:text-gray-800")
+        num_chapters = None
+        if chapters_div:
+            text = chapters_div.get_text(strip=True)
+            if "Chapters" in text:
+                num_chapters = text.split()[0]
+
+        # author
+        author = None
+        author_label = soup.find("div", string="Author:")
+        if author_label:
+            author_div = author_label.find_next_sibling("div", class_="font-set-sb15 break-word line-clamp-1 sm2:font-set-sb15")
+            if author_div:
+                author = author_div.get_text(strip=True)
+
+        # translator
+        translator = None
+        translator_label = soup.find("div", string="Translator:")
+        if translator_label:
+            translator_div = translator_label.find_next_sibling("div", class_="font-set-sb15 break-word line-clamp-1 sm2:font-set-sb15")
+            if translator_div:
+                translator = translator_div.get_text(strip=True)
+
+        # genres
+        genres = []
+        genre_links = soup.find_all("a", class_="MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineNone ww-1uhr7d7")
+        for link in genre_links:
+            genre = link.get_text(strip=True)
+            if genre:
+                genres.append(genre)
+
+        print(f"Scraped: {url} | Title: {novel_titles[0] if novel_titles else 'N/A'}")
+        return {
+            "url": url, 
+            "novel_titles": "; ".join(novel_titles),
+            "review_ratings": "; ".join(str(r) for r in review_ratings),
+            "num_chapters": num_chapters,
+            "author": author,
+            "translator": translator,
+            "genres": "; ".join(genres)
+        }
     finally:
         driver.quit()
         
@@ -55,7 +101,7 @@ def get_novel_urls(start_url):
         WebDriverWait(driver, 5).until(
             lambda d: d.execute_script("return document.readyState") == "complete"
         )
-        # Optionally scroll to load all content
+        #scroll to load all content
         last_height = driver.execute_script("return document.body.scrollHeight")
         while True:
             driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
@@ -92,17 +138,20 @@ def parallel_scrape(novel_urls, max_workers=4):
 
 
 if __name__ == "__main__":
-    # Get all novel URLs using Selenium
     novel_urls = get_novel_urls(start_url)
-    # Scrape in parallel (adjust max_workers for your CPU)
+    print(f"Total novels to scrape: {len(novel_urls)}")
     scraped_novels = parallel_scrape(novel_urls, max_workers=4)
-    print("Scraped Novels:")
-    for i, novel in enumerate(scraped_novels):
-        print(f"Novel {i+1}:")
-        print("  URL:", novel["url"])
-        print("  Data:")
-        print("    Novel Titles:", novel["novel_titles"])
-        print("    Review Ratings:", novel["review_ratings"])
+    print(f"Total novels scraped: {len(scraped_novels)}")
+
+    # Write to CSV
+    fieldnames = ["url", "novel_titles", "review_ratings", "num_chapters", "author", "translator", "genres"]
+    with open("complete_data.csv", "w", newline="", encoding="utf-8") as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+        for novel in scraped_novels:
+            writer.writerow(novel)
+
+    print("Data saved to complete_data.csv")
 
 #result = requests.get(start_url) 
 #result.encoding = "utf-8"
