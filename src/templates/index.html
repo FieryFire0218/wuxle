@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Wuxle - Guess the Novel</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1>Wuxle - Guess the Novel</h1>
+
+    <!-- Input form -->
+    <form id="guess-form" method="POST" action="/guess">
+        <input type="text" name="guess_title" placeholder="Enter your guess" required>
+        <button type="submit">Submit Guess</button>
+    </form>
+
+    <!-- Table showing past guesses -->
+    <table>
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Author</th>
+                <th>Translator</th>
+                <th>Chapters</th>
+                <th>Rating</th>
+                <th>Genres</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for guess in guesses %}
+            <tr>
+                <td>{{ guess.title }}</td>
+                <td>{{ guess.author }}</td>
+                <td>{{ guess.translator }}</td>
+                <td>{{ guess.chapters_feedback }}</td>
+                <td>{{ guess.rating_feedback }}</td>
+                <td>{{ guess.genres_feedback }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
