@@ -1,43 +1,65 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>Wuxle - Guess the Novel</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <meta charset="UTF-8">
+  <title>Wuxle - Guess the Novel</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <h1>Wuxle - Guess the Novel</h1>
+  <h1>📚 Wuxle</h1>
+  <p>Guess the WuxiaWorld novel of the day!</p>
 
-    <!-- Input form -->
-    <form id="guess-form" method="POST" action="/guess">
-        <input type="text" name="guess_title" placeholder="Enter your guess" required>
-        <button type="submit">Submit Guess</button>
-    </form>
+  <input type="text" id="guessInput" placeholder="Enter novel title..." list="novelOptions">
+  <datalist id="novelOptions">
+    {% for title in novels %}
+      <option value="{{ title }}">
+    {% endfor %}
+  </datalist>
+  <button onclick="submitGuess()">Guess</button>
 
-    <!-- Table showing past guesses -->
-    <table>
-        <thead>
-            <tr>
-                <th>Title</th>
-                <th>Author</th>
-                <th>Translator</th>
-                <th>Chapters</th>
-                <th>Rating</th>
-                <th>Genres</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for guess in guesses %}
-            <tr>
-                <td>{{ guess.title }}</td>
-                <td>{{ guess.author }}</td>
-                <td>{{ guess.translator }}</td>
-                <td>{{ guess.chapters_feedback }}</td>
-                <td>{{ guess.rating_feedback }}</td>
-                <td>{{ guess.genres_feedback }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+  <div id="results"></div>
+
+  <script>
+    async function submitGuess() {
+      const title = document.getElementById("guessInput").value;
+      const res = await fetch("/guess", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({title})
+      });
+      const data = await res.json();
+
+      let resultsDiv = document.getElementById("results");
+      if (data.error) {
+        resultsDiv.innerHTML += `<p style="color:red">${data.error}</p>`;
+        return;
+      }
+
+      if (data.title === "🎉 Correct!") {
+        resultsDiv.innerHTML += `<p>🎉 You guessed it! The novel was <b>${title}</b>.</p>`;
+        } else {
+        const genres = data.genres;
+        resultsDiv.innerHTML += `<p>Guess: <b>${title}</b><br>
+            Author: ${data.author} | Translator: ${data.translator}<br>
+            Genres: ${genres.summary} (Matched: ${genres.matched.join(", ")})<br>
+            Rating: ${data.rating} | Chapters: ${data.chapters}</p>`;
+        }
+    }
+  </script>
+  
+  <button onclick="revealAnswer()">Give Up</button>
+
+  <script>
+    async function revealAnswer() {
+        const res = await fetch("/answer");
+        const ans = await res.json();
+        document.getElementById("results").innerHTML += `
+        <p>💡 The novel was <b>${ans.title}</b> by ${ans.author}<br>
+        Translator: ${ans.translator}<br>
+        Genres: ${ans.genres.join(", ")}<br>
+        Rating: ${ans.rating} | Chapters: ${ans.chapters}</p>`;
+    }
+  </script>
+
 </body>
 </html>

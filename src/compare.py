@@ -16,8 +16,10 @@ def compare_guess(guess, answer):
     guess_genres = set(guess["genres"])
     answer_genres = set(answer["genres"])
     common_genres = guess_genres.intersection(answer_genres)
-    result["genres"] = f"{len(common_genres)}/{len(answer_genres)} match"
-
+    result["genres"] = {
+        "summary": f"{len(common_genres)}/{len(answer_genres)} match",
+        "matched": list(common_genres)
+    }
     # Rating
     if guess["rating"] == answer["rating"]:
         result["rating"] = "✔️"
