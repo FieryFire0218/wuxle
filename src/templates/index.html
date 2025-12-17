@@ -42,8 +42,22 @@
         resultsDiv.innerHTML += `<p>Guess: <b>${title}</b><br>
             Author: ${data.author} | Translator: ${data.translator}<br>
             Genres: ${genres.summary} (Matched: ${genres.matched.join(", ")})<br>
-            Rating: ${data.rating} | Chapters: ${data.chapters}</p>`;
+            Rating: ${data.rating.summary} | Chapters: ${data.chapters}</p>`;
         }
+    }
+
+    function renderStars(v) {
+      if (v == null) return "";
+      const num = Number(v);
+      if (!isFinite(num)) return "";
+      // Normalize to 0–5
+      let r5 = num;
+      if (num > 10) r5 = num / 20;      
+      else if (num > 5) r5 = num / 2;  
+      r5 = Math.max(0, Math.min(5, Math.round(r5 * 2) / 2));
+      const full = Math.floor(r5);
+      const half = (r5 - full) >= 0.5 ? 1 : 0;
+      return "★".repeat(full) + (half ? "½" : "");
     }
   </script>
   
@@ -57,7 +71,7 @@
         <p>💡 The novel was <b>${ans.title}</b> by ${ans.author}<br>
         Translator: ${ans.translator}<br>
         Genres: ${ans.genres.join(", ")}<br>
-        Rating: ${ans.rating} | Chapters: ${ans.chapters}</p>`;
+        Rating: ${renderStars(ans.rating5 ?? ans.rating)} | Chapters: ${ans.chapters}</p>`;
     }
   </script>
 

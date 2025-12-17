@@ -1,0 +1,5 @@
+0. fix scraper so there aren't empty stuff
+1. make it so you can't keep guessing after giving up
+1.5. remove input after a guess so don't have to delete
+2. make website ui look better
+3. get it actually running on a free website

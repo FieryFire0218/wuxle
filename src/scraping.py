@@ -2,26 +2,48 @@ from bs4 import BeautifulSoup
 import json
 import time
 import csv
+from pathlib import Path
 from selenium import webdriver
-from selenium.webdriver.firefox.options import Options
+from selenium.webdriver.firefox.options import Options as FirefoxOptions
+from selenium.webdriver.chrome.options import Options as ChromeOptions
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, WebDriverException
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 start_url = "https://www.wuxiaworld.com/novels"
 
+def create_webdriver():
+    # try Chrome first
+    try:
+        copts = ChromeOptions()
+        copts.add_argument("--headless=new")
+        copts.add_argument("--disable-gpu")
+        copts.add_argument("--no-sandbox")
+        copts.add_argument("--disable-dev-shm-usage")
+        driver = webdriver.Chrome(options=copts)
+        return driver
+    except WebDriverException as e:
+        print(f"[WARN] Chrome launch failed: {e}. Falling back to Firefox...")
+    # fallback to Firefox
+    fopts = FirefoxOptions()
+    fopts.add_argument("--headless")
+    fopts.add_argument("--disable-gpu")
+    try:
+        driver = webdriver.Firefox(options=fopts)
+        return driver
+    except WebDriverException as e:
+        raise RuntimeError(
+            "No browser could be launched. Ensure Chrome or Firefox is installed and drivers are available."
+        ) from e
 
 def scraper(url):
-    options = Options()
-    options.add_argument("--headless")
-    options.add_argument("--disable-gpu")
-    driver = webdriver.Firefox(options=options)
+    driver = create_webdriver()
     try:
         try:
             driver.get(url)
-            WebDriverWait(driver, 3).until(
+            WebDriverWait(driver, 15).until(
                 lambda d: d.execute_script("return document.readyState") == "complete"
             )
         except TimeoutException:
@@ -92,13 +114,10 @@ def scraper(url):
 
 def get_novel_urls(start_url):
     print("Loading main page and extracting novel URLs...")
-    options = Options()
-    options.add_argument("--headless")
-    options.add_argument("--disable-gpu")
-    driver = webdriver.Firefox(options=options)
+    driver = create_webdriver()
     try:
         driver.get(start_url)
-        WebDriverWait(driver, 5).until(
+        WebDriverWait(driver, 15).until(
             lambda d: d.execute_script("return document.readyState") == "complete"
         )
         #scroll to load all content
@@ -145,7 +164,8 @@ if __name__ == "__main__":
 
     # Write to CSV
     fieldnames = ["url", "novel_titles", "review_ratings", "num_chapters", "author", "translator", "genres"]
-    with open("complete_data.csv", "w", newline="", encoding="utf-8") as csvfile:
+    out_path = Path(__file__).resolve().parent.parent / "data" / "complete_data.csv"
+    with open(out_path, "w", newline="", encoding="utf-8") as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
         for novel in scraped_novels:

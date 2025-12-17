@@ -1,17 +1,20 @@
 from flask import Flask, render_template, request, jsonify
-import json, random, datetime
-from compare import compare_guess
-import datetime
+import json
+from pathlib import Path
+from datetime import datetime, UTC
+from compare import compare_guess, _normalize_rating_5, _round_to_half
 
 app = Flask(__name__)
 
-# Load data
-with open("data/novels.json", "r", encoding="utf-8") as f:
+DATA_PATH = Path(__file__).resolve().parent.parent / "data" / "novels.json"
+with open(DATA_PATH, "r", encoding="utf-8") as f:
     novels = json.load(f)
 
-# Pick daily novel deterministically
-today = datetime.datetime.now(datetime.UTC).date().toordinal()
-answer = novels[today % len(novels)]
+def get_daily_answer(novels):
+    if not novels:
+        return None
+    idx = datetime.now(UTC).date().toordinal() % len(novels)
+    return novels[idx]
 
 @app.route("/")
 def index():
@@ -24,17 +27,30 @@ def guess():
     if not guess_novel:
         return jsonify({"error": "Novel not found"}), 400
 
+    answer = get_daily_answer(novels)
+    if not answer:
+        return jsonify({"error": "No novels available"}), 503
+    
     feedback = compare_guess(guess_novel, answer)
     return jsonify(feedback)
 
 @app.route("/answer")
 def get_answer():
+    answer = get_daily_answer(novels)
+    if not answer:
+        return jsonify({"error": "No novels available"}), 503
+    # Normalize rating to 0–5 for UI
+    r_raw = _normalize_rating_5(answer.get("rating"))
+    r5 = None
+    if r_raw is not None:
+        r5 = max(0.0, min(5.0, _round_to_half(r_raw)))
     return jsonify({
         "title": answer["title"],
         "author": answer["author"],
         "translator": answer["translator"],
         "genres": answer["genres"],
         "rating": answer["rating"],
+        "rating5": r5,
         "chapters": answer["chapters"]
     })
 
