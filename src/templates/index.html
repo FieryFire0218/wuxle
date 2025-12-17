@@ -20,8 +20,14 @@
   <div id="results"></div>
 
   <script>
+    let hasGivenUp = false;
     async function submitGuess() {
-      const title = document.getElementById("guessInput").value;
+      if (hasGivenUp) {
+        document.getElementById("results").innerHTML += `<p style="color:red">Game over. You already gave up.</p>`;
+        return;
+      }
+      const inputEl = document.getElementById("guessInput");
+      const title = inputEl.value;
       const res = await fetch("/guess", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
@@ -32,6 +38,9 @@
       let resultsDiv = document.getElementById("results");
       if (data.error) {
         resultsDiv.innerHTML += `<p style="color:red">${data.error}</p>`;
+        // Clear the input field
+        inputEl.value = "";
+        inputEl.focus();
         return;
       }
 
@@ -44,6 +53,9 @@
             Genres: ${genres.summary} (Matched: ${genres.matched.join(", ")})<br>
             Rating: ${data.rating.summary} | Chapters: ${data.chapters}</p>`;
         }
+        // Clear the input field
+        inputEl.value = "";
+        inputEl.focus();
     }
 
     function renderStars(v) {
@@ -72,7 +84,13 @@
         Translator: ${ans.translator}<br>
         Genres: ${ans.genres.join(", ")}<br>
         Rating: ${renderStars(ans.rating5 ?? ans.rating)} | Chapters: ${ans.chapters}</p>`;
-    }
+
+        hasGivenUp = true;
+        const inputEl = document.getElementById("guessInput");
+        const guessBtn = document.getElementById("guessBtn");
+        inputEl.disabled = true;
+        guessBtn.disabled = true;
+      }
   </script>
 
 </body>
