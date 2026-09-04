@@ -1,97 +1,210 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Wuxle - Guess the Novel</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-  <h1>📚 Wuxle</h1>
-  <p>Guess the WuxiaWorld novel of the day!</p>
+  <main class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">📚</div>
+        <div>
+          <p class="eyebrow">WuxiaWorld daily challenge</p>
+          <h1>Wuxle</h1>
+        </div>
+      </div>
+      <button id="resetBtn" class="secondary-btn" type="button">Reset</button>
+    </header>
 
-  <input type="text" id="guessInput" placeholder="Enter novel title..." list="novelOptions">
-  <datalist id="novelOptions">
-    {% for title in novels %}
-      <option value="{{ title }}">
-    {% endfor %}
-  </datalist>
-  <button onclick="submitGuess()">Guess</button>
+    <section class="panel">
+      <p class="subtitle">Guess the WuxiaWorld novel of the day.</p>
 
-  <div id="results"></div>
+      <form id="guessForm" class="guess-form" autocomplete="off">
+        <label class="sr-only" for="guessInput">Novel title</label>
+        <input type="text" id="guessInput" placeholder="Enter novel title..." list="novelOptions" aria-label="Novel title">
+        <datalist id="novelOptions">
+          {% for title in novels %}
+            <option value="{{ title }}">
+          {% endfor %}
+        </datalist>
+        <button id="guessBtn" class="primary-btn" type="submit">Guess</button>
+      </form>
+
+      <div class="actions">
+        <button id="giveUpBtn" class="danger-btn" type="button">Give up</button>
+      </div>
+
+      <div id="statusMessage" class="status-message" aria-live="polite"></div>
+      <div id="results" class="results" aria-live="polite"></div>
+    </section>
+  </main>
 
   <script>
+    const guessForm = document.getElementById("guessForm");
+    const inputEl = document.getElementById("guessInput");
+    const resultsDiv = document.getElementById("results");
+    const statusEl = document.getElementById("statusMessage");
+    const guessBtn = document.getElementById("guessBtn");
+    const giveUpBtn = document.getElementById("giveUpBtn");
+    const resetBtn = document.getElementById("resetBtn");
+
     let hasGivenUp = false;
-    async function submitGuess() {
-      if (hasGivenUp) {
-        document.getElementById("results").innerHTML += `<p style="color:red">Game over. You already gave up.</p>`;
-        return;
-      }
-      const inputEl = document.getElementById("guessInput");
-      const title = inputEl.value;
-      const res = await fetch("/guess", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({title})
-      });
-      const data = await res.json();
+    let hasWon = false;
 
-      let resultsDiv = document.getElementById("results");
-      if (data.error) {
-        resultsDiv.innerHTML += `<p style="color:red">${data.error}</p>`;
-        // Clear the input field
-        inputEl.value = "";
-        inputEl.focus();
-        return;
-      }
+    function setStatus(message, tone = "info") {
+      statusEl.textContent = message;
+      statusEl.className = "status-message " + tone;
+    }
 
-      if (data.title === "🎉 Correct!") {
-        resultsDiv.innerHTML += `<p>🎉 You guessed it! The novel was <b>${title}</b>.</p>`;
-        } else {
-        const genres = data.genres;
-        resultsDiv.innerHTML += `<p>Guess: <b>${title}</b><br>
-            Author: ${data.author} | Translator: ${data.translator}<br>
-            Genres: ${genres.summary} (Matched: ${genres.matched.join(", ")})<br>
-            Rating: ${data.rating.summary} | Chapters: ${data.chapters}</p>`;
-        }
-        // Clear the input field
-        inputEl.value = "";
-        inputEl.focus();
+    function clearStatus() {
+      statusEl.textContent = "";
+      statusEl.className = "status-message";
+    }
+
+    function renderResultCard(title, bodyHtml, tone = "neutral") {
+      resultsDiv.insertAdjacentHTML(
+        "afterbegin",
+        `
+          <article class="result-card ${tone}">
+            <h3>${title}</h3>
+            <div>${bodyHtml}</div>
+          </article>
+        `
+      );
     }
 
     function renderStars(v) {
       if (v == null) return "";
       const num = Number(v);
       if (!isFinite(num)) return "";
-      // Normalize to 0–5
+
       let r5 = num;
-      if (num > 10) r5 = num / 20;      
-      else if (num > 5) r5 = num / 2;  
+      if (num > 10) r5 = num / 20;
+      else if (num > 5) r5 = num / 2;
       r5 = Math.max(0, Math.min(5, Math.round(r5 * 2) / 2));
+
       const full = Math.floor(r5);
       const half = (r5 - full) >= 0.5 ? 1 : 0;
       return "★".repeat(full) + (half ? "½" : "");
     }
-  </script>
-  
-  <button onclick="revealAnswer()">Give Up</button>
 
-  <script>
+    function lockGame() {
+      inputEl.disabled = true;
+      guessBtn.disabled = true;
+      giveUpBtn.disabled = true;
+    }
+
+    function unlockGame() {
+      inputEl.disabled = false;
+      guessBtn.disabled = false;
+      giveUpBtn.disabled = false;
+    }
+
+    function resetGame() {
+      hasGivenUp = false;
+      hasWon = false;
+      resultsDiv.innerHTML = "";
+      clearStatus();
+      inputEl.value = "";
+      unlockGame();
+      inputEl.focus();
+    }
+
+    guessForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      if (hasGivenUp || hasWon) {
+        setStatus("The game is over. Reset to play again.", "error");
+        return;
+      }
+
+      const title = inputEl.value.trim();
+      if (!title) {
+        setStatus("Please enter a novel title.", "error");
+        inputEl.focus();
+        return;
+      }
+
+      try {
+        const res = await fetch("/guess", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title })
+        });
+        const data = await res.json();
+
+        if (data.error) {
+          setStatus(data.error, "error");
+          inputEl.value = "";
+          inputEl.focus();
+          return;
+        }
+
+        if (data.title === "🎉 Correct!") {
+          renderResultCard(
+            "Correct guess",
+            `<p><strong>${title}</strong> was the novel of the day.</p>`,
+            "success"
+          );
+          setStatus("You got it!", "success");
+          hasWon = true;
+          lockGame();
+        } else {
+          const genres = data.genres;
+          renderResultCard(
+            `Guess: ${title}`,
+            `<p><strong>Author:</strong> ${data.author}</p>
+             <p><strong>Translator:</strong> ${data.translator}</p>
+             <p><strong>Genres:</strong> ${genres.summary} · Matched: ${genres.matched.join(", ") || "none"}</p>
+             <p><strong>Rating:</strong> ${data.rating.summary}</p>
+             <p><strong>Chapters:</strong> ${data.chapters}</p>`,
+            "neutral"
+          );
+          setStatus("Try another title.", "info");
+        }
+
+        inputEl.value = "";
+        inputEl.focus();
+      } catch (error) {
+        setStatus("Something went wrong while checking your guess.", "error");
+      }
+    });
+
     async function revealAnswer() {
+      if (hasGivenUp || hasWon) {
+        setStatus("This round is already finished.", "error");
+        return;
+      }
+
+      try {
         const res = await fetch("/answer");
         const ans = await res.json();
-        document.getElementById("results").innerHTML += `
-        <p>💡 The novel was <b>${ans.title}</b> by ${ans.author}<br>
-        Translator: ${ans.translator}<br>
-        Genres: ${ans.genres.join(", ")}<br>
-        Rating: ${renderStars(ans.rating5 ?? ans.rating)} | Chapters: ${ans.chapters}</p>`;
 
+        renderResultCard(
+          "Answer",
+          `<p><strong>Title:</strong> ${ans.title}</p>
+           <p><strong>Author:</strong> ${ans.author}</p>
+           <p><strong>Translator:</strong> ${ans.translator}</p>
+           <p><strong>Genres:</strong> ${ans.genres.join(", ")}</p>
+           <p><strong>Rating:</strong> ${renderStars(ans.rating5 ?? ans.rating)}</p>
+           <p><strong>Chapters:</strong> ${ans.chapters}</p>`,
+          "warning"
+        );
+
+        setStatus(`The answer was ${ans.title}.`, "warning");
         hasGivenUp = true;
-        const inputEl = document.getElementById("guessInput");
-        const guessBtn = document.getElementById("guessBtn");
-        inputEl.disabled = true;
-        guessBtn.disabled = true;
+        lockGame();
+      } catch (error) {
+        setStatus("Could not load the answer right now.", "error");
       }
-  </script>
+    }
 
+    giveUpBtn.addEventListener("click", revealAnswer);
+    resetBtn.addEventListener("click", resetGame);
+    resetGame();
+  </script>
 </body>
 </html>

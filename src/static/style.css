@@ -1,16 +1,249 @@
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  --bg: #f4efe7;
+  --panel: rgba(255, 255, 255, 0.9);
+  --panel-border: rgba(82, 55, 30, 0.12);
+  --text: #2b221d;
+  --muted: #6f625b;
+  --primary: #6b4f3a;
+  --primary-dark: #4a3528;
+  --accent: #d9b67d;
+  --light-accent: #f8ecdb;
+  --success: #1d7a5c;
+  --warning: #b86d1a;
+  --error: #b64242;
+  --shadow: 0 18px 40px rgba(49, 32, 20, 0.12);
+}
+
 body {
-  font-family: Arial, sans-serif;
-  margin: 40px;
-  background: #f9f9f9;
-  text-align: center;
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #f2e4d4 0%, #efe7dd 35%, #f8f3ef 100%);
+  color: var(--text);
+}
+
+.app-shell {
+  width: min(100%, 760px);
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.brand-mark {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  background: linear-gradient(135deg, var(--accent), #f7d8b8);
+  font-size: 2rem;
+  box-shadow: var(--shadow);
+}
+
+.eyebrow {
+  margin: 0 0 4px;
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 h1 {
-  color: #333;
+  margin: 0;
+  font-size: clamp(2.1rem, 4vw, 3rem);
+  letter-spacing: -0.04em;
+  color: var(--primary-dark);
 }
 
-#results {
-  margin-top: 20px;
-  text-align: left;
-  display: inline-block;
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 24px;
+  box-shadow: var(--shadow);
+  padding: 28px 24px;
+  backdrop-filter: blur(6px);
+}
+
+.subtitle {
+  margin: 0 0 20px;
+  font-size: 1.05rem;
+  color: var(--muted);
+}
+
+.guess-form {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+input {
+  flex: 1 1 260px;
+  min-height: 52px;
+  border: 1px solid rgba(107, 79, 58, 0.25);
+  border-radius: 14px;
+  padding: 0 16px;
+  font-size: 1rem;
+  background: rgba(255, 255, 255, 0.75);
+  color: var(--text);
+}
+
+input:focus {
+  outline: 3px solid rgba(109, 138, 111, 0.2);
+  border-color: rgba(91, 112, 84, 0.8);
+}
+
+button {
+  border: none;
+  border-radius: 14px;
+  min-height: 52px;
+  padding: 0 20px;
+  font-size: 0.98rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
+}
+
+button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.primary-btn {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(75, 51, 38, 0.18);
+}
+
+.secondary-btn {
+  background: #f2ece5;
+  color: var(--primary-dark);
+}
+
+.danger-btn {
+  background: linear-gradient(135deg, #efc7c7, #e6a4a4);
+  color: #4f1d1d;
+}
+
+.actions {
+  margin-top: 18px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.status-message {
+  min-height: 24px;
+  margin-top: 18px;
+  font-weight: 600;
+}
+
+.status-message.info {
+  color: var(--primary);
+}
+
+.status-message.success {
+  color: var(--success);
+}
+
+.status-message.warning {
+  color: var(--warning);
+}
+
+.status-message.error {
+  color: var(--error);
+}
+
+.results {
+  margin-top: 18px;
+  display: grid;
+  gap: 14px;
+}
+
+.result-card {
+  padding: 16px 18px;
+  border-radius: 16px;
+  border: 1px solid var(--panel-border);
+  background: #fff;
+}
+
+.result-card h3 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+.result-card p {
+  margin: 6px 0;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.result-card.success {
+  border-color: rgba(29, 122, 92, 0.2);
+  background: rgba(29, 122, 92, 0.05);
+}
+
+.result-card.warning {
+  border-color: rgba(184, 109, 26, 0.2);
+  background: rgba(184, 109, 26, 0.04);
+}
+
+.result-card.neutral {
+  background: rgba(107, 79, 58, 0.03);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+@media (max-width: 560px) {
+  .topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .panel {
+    padding: 20px 16px;
+  }
+
+  .guess-form {
+    flex-direction: column;
+  }
+
+  .actions {
+    justify-content: stretch;
+  }
+
+  .danger-btn,
+  .primary-btn,
+  .secondary-btn {
+    width: 100%;
+  }
 }
