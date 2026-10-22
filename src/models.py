@@ -1,6 +1,6 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
-from sqlalchemy import DateTime, Integer, String, func
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -69,3 +69,23 @@ class Novel(Base):
             "chapters": self.chapters,
             "genres": self.genres,
         }
+
+
+class DailyAnswer(Base):
+    __tablename__ = "daily_answers"
+
+    day: Mapped[date] = mapped_column(
+        Date,
+        primary_key=True,
+    )
+
+    novel_id: Mapped[int] = mapped_column(
+        ForeignKey("novels.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+
+    answer_data: Mapped[dict] = mapped_column(
+        JSONB,
+        nullable=False,
+    )
+

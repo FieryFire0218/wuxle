@@ -5,7 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 
 from database import Base, SessionLocal, engine
-from models import Novel
+from models import Novel, DailyAnswer
 
 
 # Locate the existing JSON dataset.
@@ -14,10 +14,10 @@ DATA_PATH = BASE_DIR / "data" / "novels.json"
 
 
 def import_novels():
-    # Create the database table if it doesn't exist.
+
     Base.metadata.create_all(bind=engine)
 
-    # Load the existing novel dataset.
+    # load the existing novel dataset
     with open(DATA_PATH, "r", encoding="utf-8") as file:
         novels = json.load(file)
 
@@ -33,8 +33,7 @@ def import_novels():
                 genres=novel["genres"],
             )
 
-            # Update the existing novel when the URL
-            # already exists instead of inserting twice.
+            # Update the existing novel when the URL already exists instead of inserting twice
             statement = statement.on_conflict_do_update(
                 index_elements=[Novel.url],
                 set_={
@@ -50,7 +49,6 @@ def import_novels():
 
             session.execute(statement)
 
-    # Verify the final number of database records.
     with SessionLocal() as session:
         total = session.scalar(
             select(func.count()).select_from(Novel)

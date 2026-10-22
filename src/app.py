@@ -2,9 +2,10 @@ from flask import Flask, render_template, request, jsonify
 from datetime import datetime, UTC
 
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from database import SessionLocal
-from models import Novel
+from models import Novel, DailyAnswer
 from compare import (
     compare_guess,
     _normalize_rating_5,
@@ -21,16 +22,47 @@ def get_novels():
 
         return [novel.to_dict() for novel in novels]
 
-def get_daily_answer(novels):
-    if not novels:
-        return None
 
-    idx = (
-        datetime.now(UTC).date().toordinal()
-        % len(novels)
-    )
+def get_daily_answer():
+    today = datetime.now(UTC).date()
 
-    return novels[idx]
+    with SessionLocal.begin() as session:
+
+        saved_answer = session.get(DailyAnswer, today)
+
+        if saved_answer is not None:
+            return saved_answer.answer_data
+
+        # retrieve stable database IDs in a defined order
+        novel_ids = session.scalars(
+            select(Novel.id).order_by(Novel.id)
+        ).all()
+
+        if not novel_ids:
+            return None
+
+        index = today.toordinal() % len(novel_ids)
+        selected_id = novel_ids[index]
+
+        selected_novel = session.get(Novel, selected_id)
+
+        # save the novel's data for this specific day
+        statement = pg_insert(DailyAnswer).values(
+            day=today,
+            novel_id=selected_id,
+            answer_data=selected_novel.to_dict(),
+        )
+
+        # prevent duplicate entries if two requests arrive simultaneously
+        statement = statement.on_conflict_do_nothing(
+            index_elements=[DailyAnswer.day]
+        )
+
+        session.execute(statement)
+
+        saved_answer = session.get(DailyAnswer, today)
+
+        return saved_answer.answer_data
 
 @app.route("/")
 def index():
@@ -66,7 +98,7 @@ def guess():
     if not guess_novel:
         return jsonify({"error": "Novel not found"}), 400
 
-    answer = get_daily_answer(novels)
+    answer = get_daily_answer()
 
     if not answer:
         return jsonify({
@@ -81,7 +113,7 @@ def guess():
 def get_answer():
     novels = get_novels()
 
-    answer = get_daily_answer(novels)
+    answer = get_daily_answer()
 
     if not answer:
         return jsonify({
