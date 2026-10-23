@@ -1,4 +1,4 @@
-# Wuxle
+# NovelClue
 
 Novel guessing game based on Wordle/Genshindle. Includes a web scraper used for data acquisition.
 
