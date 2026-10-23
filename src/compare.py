@@ -44,6 +44,23 @@ def _render_stars(v: float) -> str:
     half = 1 if (v - full) >= 0.5 else 0
     return "★" * full + ("½" if half else "")
 
+def _genre_map(values):
+    """Normalize genres and exclude legacy language labels."""
+    language_labels = {"chinese", "korean"}
+    genres = {}
+
+    for value in values or []:
+        if not isinstance(value, str):
+            continue
+
+        label = value.strip()
+        key = label.casefold()
+
+        if label and key not in language_labels:
+            genres.setdefault(key, label)
+
+    return genres
+
 def compare_guess(guess, answer):
     result = {}
 
@@ -59,13 +76,29 @@ def compare_guess(guess, answer):
     result["translator"] = "✔️" if guess["translator"] == answer["translator"] else "❌"
 
     # Genre comparison
-    guess_genres = set(guess["genres"])
-    answer_genres = set(answer["genres"])
-    common_genres = guess_genres.intersection(answer_genres)
-    result["genres"] = {
-        "summary": f"{len(common_genres)}/{len(answer_genres)} match",
-        "matched": list(common_genres)
-    }
+    guess_genres = _genre_map(guess.get("genres"))
+    answer_genres = _genre_map(answer.get("genres"))
+
+    if not guess_genres or not answer_genres:
+        result["genres"] = {
+            "summary": "Genre data unavailable",
+            "matched": [],
+            "available": False,
+        }
+    else:
+        common_keys = sorted(
+            guess_genres.keys() & answer_genres.keys()
+        )
+
+        result["genres"] = {
+            "summary": (
+                f"{len(common_keys)}/{len(answer_genres)} match"
+            ),
+            "matched": [
+                guess_genres[key] for key in common_keys
+            ],
+            "available": True,
+        }
     # Rating
     g_r_raw = _normalize_rating_5(guess.get("rating"))
     a_r_raw = _normalize_rating_5(answer.get("rating"))

@@ -158,7 +158,11 @@
             `Guess: ${title}`,
             `<p><strong>Author:</strong> ${data.author}</p>
              <p><strong>Translator:</strong> ${data.translator}</p>
-             <p><strong>Genres:</strong> ${genres.summary} · Matched: ${genres.matched.join(", ") || "none"}</p>
+            <p><strong>Genres:</strong> ${
+              genres.available
+                ? `${genres.summary} · Matched: ${genres.matched.join(", ") || "none"}`
+                : genres.summary
+            }</p>
              <p><strong>Rating:</strong> ${data.rating.summary}</p>
              <p><strong>Chapters:</strong> ${data.chapters}</p>`,
             "neutral"
@@ -188,7 +192,11 @@
           `<p><strong>Title:</strong> ${ans.title}</p>
            <p><strong>Author:</strong> ${ans.author}</p>
            <p><strong>Translator:</strong> ${ans.translator}</p>
-           <p><strong>Genres:</strong> ${ans.genres.join(", ")}</p>
+          <p><strong>Genres:</strong> ${
+            (ans.genres || [])
+              .filter(g => !["chinese", "korean"].includes(g.trim().toLowerCase()))
+              .join(", ") || "Genre data unavailable"
+          }</p>
            <p><strong>Rating:</strong> ${renderStars(ans.rating5 ?? ans.rating)}</p>
            <p><strong>Chapters:</strong> ${ans.chapters}</p>`,
           "warning"
