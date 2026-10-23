@@ -1,6 +1,6 @@
 from datetime import date, datetime, timezone
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, func
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -50,6 +50,27 @@ class Novel(Base):
     genres: Mapped[list] = mapped_column(
         JSONB,
         nullable=False,
+    )
+
+    original_language: Mapped[str | None] = mapped_column(
+        String(10),
+        nullable=True,
+    )
+
+    synopsis: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    novelupdates_url: Mapped[str | None] = mapped_column(
+        String(500),
+        nullable=True,
+        unique=True,
+    )
+
+    novelupdates_rating_count: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
     )
 
     updated_at: Mapped[datetime] = mapped_column(
