@@ -73,6 +73,11 @@ class Novel(Base):
         nullable=True,
     )
 
+    novelupdates_reading_list_count: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+    )
+
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
