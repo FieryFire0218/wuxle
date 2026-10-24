@@ -1,6 +1,6 @@
 from datetime import date, datetime, timezone
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Text, false, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -34,17 +34,17 @@ class Novel(Base):
 
     translator: Mapped[str] = mapped_column(
         String(255),
-        nullable=False,
+        nullable=True,
     )
 
     rating: Mapped[int] = mapped_column(
         Integer,
-        nullable=False,
+        nullable=True,
     )
 
     chapters: Mapped[int] = mapped_column(
         Integer,
-        nullable=False,
+        nullable=True,
     )
 
     genres: Mapped[list] = mapped_column(
@@ -83,6 +83,13 @@ class Novel(Base):
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False,
+    )
+
+    daily_eligible: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=false(),
     )
 
     def to_dict(self):

@@ -35,7 +35,9 @@ def get_daily_answer():
 
         # retrieve stable database IDs in a defined order
         novel_ids = session.scalars(
-            select(Novel.id).order_by(Novel.id)
+            select(Novel.id)
+            .where(Novel.daily_eligible.is_(True))
+            .order_by(Novel.id)
         ).all()
 
         if not novel_ids:
