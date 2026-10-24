@@ -47,3 +47,4 @@ data/
 logs/
 temp/
 .cache/
+data/nu_finder_cache/
